@@ -31,6 +31,7 @@ import bcolz
 import numpy as np
 
 from keras.preprocessing.sequence import pad_sequences
+from keras import backend as K
 
 from models import blstm
 from util import shuffle_arrays
@@ -38,7 +39,7 @@ from util import shuffle_arrays
 
 def main():
     np.random.seed(7)
-    seq_dir, ss_dir, out_dir = parse_arguments()
+    seq_dir, ss_dir, out_dir, nthreads, hidden_units, layers, max_seq_len, dropout = parse_arguments()
 
     if out_dir is None:
         out_dir = os.getcwd()
@@ -51,15 +52,18 @@ def main():
     # correspond to the number of training points. It's probably a good idea to
     # read all files and then specify a smaller subset for training/testing in
     # `make_data_tensors`. A value of -1 will read all files.
+    print('Reading files...')
     maxseq = -1
-    seqs, sss = read_seqs_and_sss(seq_dir, ss_dir, maxseq=maxseq)
+    seqs, sss = read_seqs_and_sss(seq_dir, ss_dir, maxseq=maxseq, max_len=max_seq_len)
     np.save(os.path.join(out_dir, 'seqs_dict.npy'), seqs)  # Save dictionaries
     np.save(os.path.join(out_dir, 'sss_dict.npy'), sss)
 
     # Construct data for Keras. This pads sequences with rows of zeros for ones
     # that are shorter than the longest sequence in `seqs`.
-    ndata = 5000  # Specify number of data points (includes train, val, and test)
+    print('Making tensors...')
+    ndata = 'all'  # Specify number of data points (includes train, val, and test)
     x, y = make_data_tensors(seqs, sss, ndata=ndata)
+    print('Number of data points: {}'.format(len(x)))
 
     train_split = 0.8  # Fraction of points to use as training data. Rest is divided equally into val/test
     train_end = int(train_split * len(x))
@@ -74,13 +78,20 @@ def main():
     np.save(os.path.join(out_dir, 'y_test.npy'), y_test)
     
     # Set parameters for Keras model
-    hidden_units = 32  # Tune this
     max_epochs = 1000
     batch_size = 32
+    patience = 30
+    if dropout:
+        dropout = recurrent_dropout = 0.5
+    else:
+        dropout = recurrent_dropout = 0.0
 
     # Build model and train
+    if nthreads is not None:
+        K.set_session(K.tf.Session(config=K.tf.ConfigProto(intra_op_parallelism_threads=nthreads, inter_op_parallelism_threads=nthreads)))
     model = blstm(x_train, x_val, x_test, y_train, y_val, y_test, out_dir,
-                  hidden_units=hidden_units, max_epochs=max_epochs, batch_size=batch_size)
+                  hidden_units=hidden_units, layers=layers, max_epochs=max_epochs, batch_size=batch_size,
+                  patience=patience, dropout=dropout, recurrent_dropout=recurrent_dropout)
 
 
 def parse_arguments():
@@ -89,12 +100,17 @@ def parse_arguments():
     structures from command line.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('seq_dir', type=str, metavar='SEQ_DIR', help='Directory containing encoded protein sequences.')
+    parser.add_argument('seq_dir', type=str, metavar='SEQ_DIR', help='Directory containing encoded protein sequences')
     parser.add_argument('ss_dir', type=str, metavar='SS_DIR', help='Directory containing encoded secondary structures')
+    parser.add_argument('-u', '--hidden_units', type=int, default=100, metavar='HU', help='Number of hidden units per LSTM layer')
+    parser.add_argument('-l', '--layers', type=int, default=1, metavar='L', help='Number of BLSTM layers')
+    parser.add_argument('-m', '--max_seq_len', type=int, default=None, metavar='MAX_LEN', help='Maximum sequence length')
+    parser.add_argument('-d', '--dropout', action='store_true', help='Use 0.5 dropout/recurrent_dropout')
     parser.add_argument('-o', '--out_dir', type=str, metavar='OUT_DIR', help='Directory to save output in')
+    parser.add_argument('-t', '--threads', type=int, metavar='NTHREADS', help='Number of parallel threads')
     args = parser.parse_args()
 
-    return args.seq_dir, args.ss_dir, args.out_dir
+    return args.seq_dir, args.ss_dir, args.out_dir, args.threads, args.hidden_units, args.layers, args.max_seq_len, args.dropout
 
 
 def read_seqs_and_sss(seq_dir, ss_dir, maxseq=-1, max_len=None):

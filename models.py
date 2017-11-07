@@ -9,7 +9,8 @@ from keras.callbacks import EarlyStopping, ModelCheckpoint
 
 
 def blstm(x_train, x_val, x_test, y_train, y_val, y_test, out_dir,
-          name='blstm_model', hidden_units=10, max_epochs=1000, batch_size=32, patience=20):
+          name='blstm_model', hidden_units=10, layers=1, max_epochs=1000, batch_size=32, patience=20,
+          dropout=0.0, recurrent_dropout=0.0):
     """
     Bidirectional LSTM model for protein secondary structure prediction.
     """
@@ -21,7 +22,12 @@ def blstm(x_train, x_val, x_test, y_train, y_val, y_test, out_dir,
     # Build Keras model
     model = Sequential()
     model.add(Masking(mask_value=0, input_shape=(max_seq_len, num_features)))
-    model.add(Bidirectional(LSTM(hidden_units, return_sequences=True, input_shape=(max_seq_len, num_features))))
+    model.add(Bidirectional(LSTM(hidden_units, return_sequences=True, input_shape=(max_seq_len, num_features),
+                                 dropout=dropout, recurrent_dropout=recurrent_dropout)))
+    if layers > 1:
+        for _ in range(layers-1):
+            model.add(Bidirectional(LSTM(hidden_units, return_sequences=True,
+                                         dropout=dropout, recurrent_dropout=recurrent_dropout)))
     model.add(TimeDistributed(Dense(num_classes)))
     model.add(Activation('softmax'))
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
