@@ -39,7 +39,7 @@ from util import shuffle_arrays
 
 def main():
     np.random.seed(7)
-    seq_dir, ss_dir, out_dir, nthreads, hidden_units, layers, max_seq_len, dropout = parse_arguments()
+    seq_dir, ss_dir, out_dir, nthreads, hidden_units, layers, max_seq_len, dropout, threegram = parse_arguments()
 
     if out_dir is None:
         out_dir = os.getcwd()
@@ -54,7 +54,7 @@ def main():
     # `make_data_tensors`. A value of -1 will read all files.
     print('Reading files...')
     maxseq = -1
-    seqs, sss = read_seqs_and_sss(seq_dir, ss_dir, maxseq=maxseq, max_len=max_seq_len)
+    seqs, sss = read_seqs_and_sss(seq_dir, ss_dir, maxseq=maxseq, max_len=max_seq_len, read_all=threegram)
     np.save(os.path.join(out_dir, 'seqs_dict.npy'), seqs)  # Save dictionaries
     np.save(os.path.join(out_dir, 'sss_dict.npy'), sss)
 
@@ -91,7 +91,8 @@ def main():
         K.set_session(K.tf.Session(config=K.tf.ConfigProto(intra_op_parallelism_threads=nthreads, inter_op_parallelism_threads=nthreads)))
     model = blstm(x_train, x_val, x_test, y_train, y_val, y_test, out_dir,
                   hidden_units=hidden_units, layers=layers, max_epochs=max_epochs, batch_size=batch_size,
-                  patience=patience, dropout=dropout, recurrent_dropout=recurrent_dropout)
+                  patience=patience, dropout=dropout, recurrent_dropout=recurrent_dropout,
+                  use_mask=not threegram)
 
 
 def parse_arguments():
@@ -102,6 +103,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('seq_dir', type=str, metavar='SEQ_DIR', help='Directory containing encoded protein sequences')
     parser.add_argument('ss_dir', type=str, metavar='SS_DIR', help='Directory containing encoded secondary structures')
+    parser.add_argument('--threegram', action='store_true', help='Provided sequences use sequential threegram encoding')
     parser.add_argument('-u', '--hidden_units', type=int, default=100, metavar='HU', help='Number of hidden units per LSTM layer')
     parser.add_argument('-l', '--layers', type=int, default=1, metavar='L', help='Number of BLSTM layers')
     parser.add_argument('-m', '--max_seq_len', type=int, default=None, metavar='MAX_LEN', help='Maximum sequence length')
@@ -110,15 +112,18 @@ def parse_arguments():
     parser.add_argument('-t', '--threads', type=int, metavar='NTHREADS', help='Number of parallel threads')
     args = parser.parse_args()
 
-    return args.seq_dir, args.ss_dir, args.out_dir, args.threads, args.hidden_units, args.layers, args.max_seq_len, args.dropout
+    return args.seq_dir, args.ss_dir, args.out_dir, args.threads, args.hidden_units, args.layers, args.max_seq_len, args.dropout, args.threegram
 
 
-def read_seqs_and_sss(seq_dir, ss_dir, maxseq=-1, max_len=None):
+def read_seqs_and_sss(seq_dir, ss_dir, maxseq=-1, max_len=None, read_all=False):
     """
     Read bcolz files containing one-hot representations of protein sequences 
     (in `seq_dir`) and secondary structure annotations (in `ss_dir`). For faster
     execution during debugging, a maximum number of sequences to be read can be
     specified. The maximum sequence length can be restricted using `max_len`.
+    If `read_all` is False, proteins with unknown amino acids or the end
+    character will be filtered. If non-one-hot encodings are read, `read_all`
+    should be set to True.
 
     Returns dictionaries of sequences and secondary structures (dictionary key
     is the file name without its extension).
@@ -132,7 +137,7 @@ def read_seqs_and_sss(seq_dir, ss_dir, maxseq=-1, max_len=None):
         ss = bcolz.open(ss_f)[:]
 
         # For now ignore proteins that have unknown amino acids or the end character
-        if not np.any(seq[:,20]) and not np.any(seq[:,23]):
+        if read_all or (not np.any(seq[:,20]) and not np.any(seq[:,23])):
             # Only add sequences up to specified length
             if max_len is None or len(seq) <= max_len:
                 name = os.path.splitext(seq_f_base)[0]
@@ -153,8 +158,9 @@ def make_data_tensors(seqs, sss, ndata='all'):
 
     Shorter protein sequences are padded with zeros.
     """
-    x = pad_sequences(seqs.values(), padding='post')
-    y = pad_sequences(sss.values(), padding='post')
+    maxlen = len(max(sss.values(), key=len))  # Specify maxlen explicitly because sss might be longer than seqs
+    x = pad_sequences(seqs.values(), maxlen=maxlen, padding='post')
+    y = pad_sequences(sss.values(), maxlen=maxlen, padding='post')
     assert x.shape[:2] == y.shape[:2]
     x, y = shuffle_arrays(x, y)
 
