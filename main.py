@@ -62,7 +62,11 @@ def main():
     # that are shorter than the longest sequence in `seqs`.
     print('Making tensors...')
     ndata = 'all'  # Specify number of data points (includes train, val, and test)
-    x, y = make_data_tensors(seqs, sss, ndata=ndata)
+    if threegram:
+        dtype = 'float64'
+    else:
+        dtype = 'int32'
+    x, y = make_data_tensors(seqs, sss, ndata=ndata, dtype_x=dtype)
     print('Number of data points: {}'.format(len(x)))
 
     train_split = 0.8  # Fraction of points to use as training data. Rest is divided equally into val/test
@@ -91,8 +95,7 @@ def main():
         K.set_session(K.tf.Session(config=K.tf.ConfigProto(intra_op_parallelism_threads=nthreads, inter_op_parallelism_threads=nthreads)))
     model = blstm(x_train, x_val, x_test, y_train, y_val, y_test, out_dir,
                   hidden_units=hidden_units, layers=layers, max_epochs=max_epochs, batch_size=batch_size,
-                  patience=patience, dropout=dropout, recurrent_dropout=recurrent_dropout,
-                  use_mask=not threegram)
+                  patience=patience, dropout=dropout, recurrent_dropout=recurrent_dropout)
 
 
 def parse_arguments():
@@ -150,17 +153,18 @@ def read_seqs_and_sss(seq_dir, ss_dir, maxseq=-1, max_len=None, read_all=False):
     return seqs, sss
 
 
-def make_data_tensors(seqs, sss, ndata='all'):
+def make_data_tensors(seqs, sss, ndata='all', dtype_x='int32', dtype_y='int32'):
     """
     Convert the sequence and secondary structure dictionaries to data tensors.
     The number of data points to keep after random shuffling can be specified
-    by `ndata`.
+    by `ndata`. Make sure to set the data type to float if using non-one-hot
+    encoded data.
 
     Shorter protein sequences are padded with zeros.
     """
     maxlen = len(max(sss.values(), key=len))  # Specify maxlen explicitly because sss might be longer than seqs
-    x = pad_sequences(seqs.values(), maxlen=maxlen, padding='post')
-    y = pad_sequences(sss.values(), maxlen=maxlen, padding='post')
+    x = pad_sequences(seqs.values(), maxlen=maxlen, dtype=dtype_x, padding='post')
+    y = pad_sequences(sss.values(), maxlen=maxlen, dtype=dtype_y, padding='post')
     assert x.shape[:2] == y.shape[:2]
     x, y = shuffle_arrays(x, y)
 
