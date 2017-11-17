@@ -7,6 +7,8 @@ from keras.models import Sequential, load_model
 from keras.layers import Dense, Activation, LSTM, Bidirectional, TimeDistributed, Masking
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 
+from util import calculate_accuracy
+
 
 def blstm(x_train, x_val, x_test, y_train, y_val, y_test, out_dir,
           name='blstm_model', hidden_units=10, layers=1, max_epochs=1000, batch_size=32, patience=20,
@@ -40,9 +42,9 @@ def blstm(x_train, x_val, x_test, y_train, y_val, y_test, out_dir,
               validation_data=(x_val, y_val), callbacks=[EarlyStopping(patience=patience), checkpointer])
 
     model = load_model(model_path)  # Best model is not necessarily current model instance b/c patience != 0
-    score_train = model.evaluate(x_train, y_train)[1]
-    score_test = model.evaluate(x_test, y_test)[1]
-    print('Train accuracy: {:.2f}%'.format(score_train * 100.0))
-    print('Test accuracy: {:.2f}%'.format(score_test * 100.0))
+    y_train_pred = model.predict(x_train)
+    y_test_pred = model.predict(x_test)
+    print('Train accuracy: {:.2f}%'.format(calculate_accuracy(y_train, y_train_pred) * 100.0))
+    print('Test accuracy: {:.2f}%'.format(calculate_accuracy(y_test, y_test_pred) * 100.0))
 
     return model
