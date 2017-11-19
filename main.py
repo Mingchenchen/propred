@@ -47,14 +47,8 @@ def main():
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
 
-    # Specify a maximum number of sequences for now, which speeds up execution.
-    # `maxseq` only affects how many files to read, it doesn't actually
-    # correspond to the number of training points. It's probably a good idea to
-    # read all files and then specify a smaller subset for training/testing in
-    # `make_data_tensors`. A value of -1 will read all files.
     print('Reading files...')
-    maxseq = -1
-    seqs, sss = read_seqs_and_sss(seq_dir, ss_dir, maxseq=maxseq, max_len=max_seq_len)
+    seqs, sss = read_seqs_and_sss(seq_dir, ss_dir, max_len=max_seq_len)
     np.save(os.path.join(out_dir, 'seqs_dict.npy'), seqs)  # Save dictionaries
     np.save(os.path.join(out_dir, 'sss_dict.npy'), sss)
 
