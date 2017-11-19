@@ -39,7 +39,7 @@ from util import shuffle_arrays
 
 def main():
     np.random.seed(7)
-    seq_dir, ss_dir, out_dir, nthreads, hidden_units, layers, max_seq_len, dropout = parse_arguments()
+    seq_dir, ss_dir, out_dir, nthreads, hidden_units, layers, max_seq_len, dropout, ndata = parse_arguments()
 
     if out_dir is None:
         out_dir = os.getcwd()
@@ -61,7 +61,9 @@ def main():
     # Construct data for Keras. This pads sequences with rows of zeros for ones
     # that are shorter than the longest sequence in `seqs`.
     print('Making tensors...')
-    ndata = 'all'  # Specify number of data points (includes train, val, and test)
+    # Number of data points includes train, val, and test
+    if ndata is None or ndata > len(seqs):
+        ndata = 'all'
     x, y = make_data_tensors(seqs, sss, ndata=ndata)
     print('Number of data points: {}'.format(len(x)))
 
@@ -105,12 +107,13 @@ def parse_arguments():
     parser.add_argument('-u', '--hidden_units', type=int, default=100, metavar='HU', help='Number of hidden units per LSTM layer')
     parser.add_argument('-l', '--layers', type=int, default=1, metavar='L', help='Number of BLSTM layers')
     parser.add_argument('-m', '--max_seq_len', type=int, default=None, metavar='MAX_LEN', help='Maximum sequence length')
+    parser.add_argument('-n', '--ndata', type=int, default=None, metavar='NDATA', help='Number of data points to use')
     parser.add_argument('-d', '--dropout', action='store_true', help='Use 0.5 dropout/recurrent_dropout')
     parser.add_argument('-o', '--out_dir', type=str, metavar='OUT_DIR', help='Directory to save output in')
     parser.add_argument('-t', '--threads', type=int, metavar='NTHREADS', help='Number of parallel threads')
     args = parser.parse_args()
 
-    return args.seq_dir, args.ss_dir, args.out_dir, args.threads, args.hidden_units, args.layers, args.max_seq_len, args.dropout
+    return args.seq_dir, args.ss_dir, args.out_dir, args.threads, args.hidden_units, args.layers, args.max_seq_len, args.dropout, args.ndata
 
 
 def read_seqs_and_sss(seq_dir, ss_dir, maxseq=-1, max_len=None):
