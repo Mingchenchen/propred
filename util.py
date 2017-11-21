@@ -40,10 +40,10 @@ def get_true_false_positives_negatives(cm):
     return TP, TN, FP, FN
 
 
-def calculate_sensitivity_precision_f1_mcc(cm):
+def calculate_recall_precision_f1_mcc(cm):
     TP, TN, FP, FN = get_true_false_positives_negatives(cm)
-    sensitivity = TP / (TP + FN)
+    recall = TP / (TP + FN)
     precision = TP / (TP + FP)
-    f1 = 2.0 * precision * sensitivity / (precision + sensitivity)
+    f1 = 2.0 * precision * recall / (precision + recall)
     mcc = (TP * TN - FP * FN) / np.sqrt((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))
-    return {'sensitivity': sensitivity, 'precision': precision, 'f1': f1, 'mcc': mcc}
+    return {'recall': recall, 'precision': precision, 'f1': f1, 'mcc': mcc}

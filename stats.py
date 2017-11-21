@@ -6,7 +6,7 @@ import argparse
 import numpy as np
 from keras.models import load_model
 
-from util import calculate_accuracy, generate_confusion_matrix, calculate_sensitivity_precision_f1_mcc
+from util import calculate_accuracy, generate_confusion_matrix, calculate_recall_precision_f1_mcc
 
 
 def main():
@@ -26,14 +26,14 @@ def main():
     acc = calculate_accuracy(y, y_pred)
     cm = generate_confusion_matrix(y, y_pred)
     cm_norm = cm.astype(np.float) / cm.sum(axis=1)[:, np.newaxis]
-    stats = calculate_sensitivity_precision_f1_mcc(cm)
+    stats = calculate_recall_precision_f1_mcc(cm)
 
     print('Accuracy: {:.2f}%'.format(acc * 100.0))
     print('Confusion matrix (rows are actual, columns are predicted):')
     print(cm)
     print('Normalized confusion matrix:')
     print(cm_norm)
-    print('Sensitivity: {}'.format(stats['sensitivity']))
+    print('Recall: {}'.format(stats['recall']))
     print('Precision: {}'.format(stats['precision']))
     print('F1 score: {}'.format(stats['f1']))
     print('Matthews correlation coefficient: {}'.format(stats['mcc']))
@@ -45,7 +45,7 @@ def main():
             f.write(str(cm) + '\n')
             f.write('Normalized confusion matrix:\n')
             f.write(str(cm_norm) + '\n')
-            f.write('Sensitivity: {}\n'.format(stats['sensitivity']))
+            f.write('Recall: {}\n'.format(stats['recall']))
             f.write('Precision: {}\n'.format(stats['precision']))
             f.write('F1 score: {}\n'.format(stats['f1']))
             f.write('Matthews correlation coefficient: {}\n'.format(stats['mcc']))
