@@ -48,3 +48,22 @@ def blstm(x_train, x_val, x_test, y_train, y_val, y_test, out_dir,
     print('Test accuracy: {:.2f}%'.format(calculate_accuracy(y_test, y_test_pred) * 100.0))
 
     return model
+
+
+def load_and_train(model_path, x_train, x_val, x_test, y_train, y_val, y_test,
+                   max_epochs=1000, batch_size=32, patience=20):
+    """
+    Load model and resume training.
+    """
+    model = load_model(model_path)
+    checkpointer = ModelCheckpoint(model_path, save_best_only=True)
+    model.fit(x_train, y_train, epochs=max_epochs, batch_size=batch_size, verbose=2,
+              validation_data=(x_val, y_val), callbacks=[EarlyStopping(patience=patience), checkpointer])
+
+    model = load_model(model_path)
+    y_train_pred = model.predict(x_train)
+    y_test_pred = model.predict(x_test)
+    print('Train accuracy: {:.2f}%'.format(calculate_accuracy(y_train, y_train_pred) * 100.0))
+    print('Test accuracy: {:.2f}%'.format(calculate_accuracy(y_test, y_test_pred) * 100.0))
+
+    return model
