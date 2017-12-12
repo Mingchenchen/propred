@@ -17,14 +17,16 @@ def main():
     print('Loading tensors...')
     x_train = np.load(os.path.join(data_dir, 'x_train.npy'))
     x_val = np.load(os.path.join(data_dir, 'x_val.npy'))
-    x_test = np.load(os.path.join(data_dir, 'x_test.npy'))
+    #x_test = np.load(os.path.join(data_dir, 'x_test.npy'))
+    x_test = [np.load(os.path.join(data_dir, 'x_test_casp10.npy')), np.load(os.path.join(data_dir, 'x_test_casp11.npy')), np.load(os.path.join(data_dir, 'x_test_cullpdb.npy'))]
     y_train = np.load(os.path.join(data_dir, 'y_train.npy'))
     y_val = np.load(os.path.join(data_dir, 'y_val.npy'))
-    y_test = np.load(os.path.join(data_dir, 'y_test.npy'))
+    #y_test = np.load(os.path.join(data_dir, 'y_test.npy'))
+    y_test = [np.load(os.path.join(data_dir, 'y_test_casp10.npy')), np.load(os.path.join(data_dir, 'y_test_casp11.npy')), np.load(os.path.join(data_dir, 'y_test_cullpdb.npy'))]
 
-    max_epochs = 1000
+    max_epochs = 50
     batch_size = 32
-    patience = 30
+    patience = 5
 
     if nthreads is not None:
         K.set_session(K.tf.Session(config=K.tf.ConfigProto(intra_op_parallelism_threads=nthreads, inter_op_parallelism_threads=nthreads)))
