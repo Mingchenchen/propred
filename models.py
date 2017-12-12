@@ -53,7 +53,7 @@ def bgru(x_train, x_val, x_test, y_train, y_val, y_test, out_dir,
           name='bgru_model', hidden_units=10, layers=1, max_epochs=1000, batch_size=32, patience=20,
           dropout=0.0, recurrent_dropout=0.0):
     """
-    Bidirectional LSTM model for protein secondary structure prediction.
+    Bidirectional GRU model for protein secondary structure prediction.
     """
     num_samples = x_train.shape[0]
     max_seq_len = x_train.shape[1]
